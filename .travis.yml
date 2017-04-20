@@ -66,11 +66,19 @@ install:
     && luarocks install luacov)
 before_script:
   - export LUA=$(which luajit lua | head -n 1)
+  - head -50 data/src-train.txt > data/src-train.txt.min
+  - head -50 data/tgt-train.txt > data/tgt-train.txt.min
+  - head -10 data/src-val.txt > data/src-val.txt.min
+  - head -10 data/tgt-val.txt > data/tgt-val.txt.min
+  - head -1 data/src-test.txt > data/src-test.txt.min
 script:
   - luacheck *lua onmt/ tools/ benchmark/ test/
   - luarocks make rocks/opennmt-scm-1.rockspec
   - sh test/tokenization/test.sh
   - ${LUA} -lluacov test/test.lua
+  - ${LUA} -lluacov preprocess.lua -train_src data/src-train.txt.min -train_tgt data/tgt-train.txt.min -valid_src data/src-val.txt.min -valid_tgt data/tgt-val.txt.min -save_data demo
+  - ${LUA} -lluacov train.lua -data demo-train.t7 -save_model demo -layers 1 -rnn_size 20 -word_vec_size 10 -max_batch_size 5 -save_every 4 -end_epoch 1
+  - ${LUA} -lluacov translate.lua -model demo_checkpoint.t7 -src data/src-test.txt.min
   - luacov
 after_success:
   - bash <(curl -s https://codecov.io/bash)
